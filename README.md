@@ -3,7 +3,7 @@
 *Version 1.0 · Drafted 2026-04-10*
 
 ## Table of contents
-1. The problem
+1. (The problem)[]
 2. What is MEV (primer)
 3. Why we're building this
 4. Existing solutions and where they stop
