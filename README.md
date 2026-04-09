@@ -3,22 +3,22 @@
 *Version 1.0 · Drafted 2026-04-10*
 
 ## Table of contents
-1. (The problem)[]
-2. What is MEV (primer)
-3. Why we're building this
-4. Existing solutions and where they stop
-5. How we go one step further
-6. Scope
-7. Failure taxonomy
-8. Architecture
-9. Tech stack
-10. Tool layer
-11. Agent design
-12. Data & demo strategy
-13. Execution plan (hackathon week)
-14. Risks and mitigations
-15. Pitch narrative
-16. Open questions
+1. [The problem](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan/blob/master/README.md#1-the-problem)
+2. [What is MEV (primer)](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#2-what-is-mev-brief-primer)
+3. [Why we're building this](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#3-why-were-building-this)
+4. [Existing solutions and where they stop](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#4-existing-solutions-and-where-they-stop)
+5. [How we go one step further](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#5-how-we-go-one-step-further)
+6. [Scope](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#6-scope)
+7. [Failure taxonomy](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#7-failure-taxonomy)
+8. [Architecture](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#7-failure-taxonomy)
+9. [Tech stack](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#9-tech-stack)
+10. [Tool layer](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
+11. [Agent design](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
+12. [Data & demo strategy](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
+13. [Execution plan (hackathon week)](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
+14. [Risks and mitigations](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
+15. [Pitch narrative](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
+16. [Open questions](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#16-open-questions)
 
 ---
 
