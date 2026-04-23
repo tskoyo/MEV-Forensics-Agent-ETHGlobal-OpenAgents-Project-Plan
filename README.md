@@ -122,14 +122,6 @@ We put a disciplined, evidence-citing agent on top of the existing data layer.
 - Aggregate cross-trade dashboards
 - Auth, multi-user, any infra beyond single-machine demo
 
-### Explicit "won't build" list
-- Our own MEV bot
-- Smart contracts
-- Mempool monitoring
-- Private order flow integration
-- A backtester
-- Any "predict future trades" feature
-
 ---
 
 ## 7. Failure taxonomy
