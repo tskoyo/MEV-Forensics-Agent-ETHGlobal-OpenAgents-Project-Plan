@@ -68,7 +68,7 @@ That's what this tool answers.
 
 1. **The pain is real and underserved.** Solo MEV searchers are a small but technically sophisticated user base. They manually investigate trades today because no tool does it for them. Classic agentic automation shape: bounded domain, clear tools, verifiable outputs.
 2. **LLM tool-use only recently became reliable enough.** Chaining 5–8 tool calls with Tenderly, RPC lookups, and simulations used to be a pipe dream. Claude handles it today. New product shape enabled by recent capability.
-3. **ETHGlobal OpenAgents is literally about agents.** Matches the theme: autonomous tool use, multi-step reasoning, verifiable results, DeFi domain, obvious Tenderly + Uniswap Foundation sponsor fit.
+3. **ETHGlobal OpenAgents is literally about agents.** Matches the theme: autonomous tool use, multi-step reasoning, verifiable results, DeFi domain, obvious Uniswap Foundation sponsor fit.
 
 ---
 
@@ -81,8 +81,6 @@ That's what this tool answers.
 | **Tenderly** | Simulation, call traces, debugger, alerts | Powerful *evidence layer*, but a tool — it doesn't reason, you drive it |
 | **Etherscan / Phalcon** | Raw tx + decoded traces | Manual; no reasoning |
 | **Nansen AI / Arkham** | Wallet labeling + some LLM search over aggregate data | Surface-level; no trace-level reasoning, no simulation, no MEV forensics depth |
-
-EigenPhi's own docs describe their arbitrage profile as *"retrospective summary of what happened, not analytical depth about why outcomes diverged from alternatives."* That sentence is the gap.
 
 ---
 
