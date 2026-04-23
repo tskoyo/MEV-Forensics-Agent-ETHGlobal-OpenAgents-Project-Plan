@@ -31,11 +31,10 @@ Today, when a searcher sees a trade that earned $50 instead of the expected $75,
 
 1. Open Etherscan to the tx
 2. Copy the block number, open it in another tab for neighboring txs
-3. Open Tenderly to load the trace
-4. Manually scan each competing tx in the same block looking for anyone who touched the same pool
-5. Manually compute what pool state *would* have given them the expected outcome
-6. Try to re-simulate the trade against different historical states
-7. Write themselves a note and move on
+3. Manually scan each competing tx in the same block looking for anyone who touched the same pool
+4. Manually compute what pool state *would* have given them the expected outcome
+5. Try to re-simulate the trade against different historical states
+6. Write themselves a note and move on
 
 **This takes 15–30 minutes per trade.** A searcher running 500 trades/day cannot investigate more than a handful. Most post-mortems never happen. Patterns go unnoticed. Money leaks invisibly.
 
