@@ -1,25 +1,25 @@
 # MEV Forensics Agent — ETHGlobal OpenAgents Project Plan
 
-*Version 2.0 · MVP scope · Updated 2026-04-21*
+*Version 3.0 · MVP scope · Updated 2026-04-23*
 
 
 ## Table of contents
-1. [The problem](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan/blob/master/README.md#1-the-problem)
-2. [What is MEV (primer)](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#2-what-is-mev-brief-primer)
-3. [Why we're building this](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#3-why-were-building-this)
-4. [Existing solutions and where they stop](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#4-existing-solutions-and-where-they-stop)
-5. [How we go one step further](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#5-how-we-go-one-step-further)
-6. [Scope](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#6-scope)
-7. [Failure taxonomy](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#7-failure-taxonomy)
-8. [Architecture](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#8-architecture)
-9. [Tech stack](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#9-tech-stack)
-10. [Tool layer](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#10-tool-layer)
-11. [Agent design](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#11-agent-design)
-12. [Data & demo strategy](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#12-data--demo-strategy)
-13. [Execution plan (hackathon week)](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#13-execution-plan-hackathon-week)
-14. [Risks and mitigations](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#14-risks-and-mitigations)
-15. [Pitch narrative](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#15-pitch-narrative-5-min)
-16. [Open questions](https://github.com/tskoyo/MEV-Forensics-Agent-ETHGlobal-OpenAgents-Project-Plan?tab=readme-ov-file#16-open-questions)
+1. [The problem](#1-the-problem)
+2. [What is MEV (primer)](#2-what-is-mev-brief-primer)
+3. [Why we're building this](#3-why-were-building-this)
+4. [Existing solutions and where they stop](#4-existing-solutions-and-where-they-stop)
+5. [How we go one step further](#5-how-we-go-one-step-further)
+6. [Scope](#6-scope)
+7. [Failure taxonomy](#7-failure-taxonomy)
+8. [Architecture](#8-architecture)
+9. [Tech stack](#9-tech-stack)
+10. [Tool layer](#10-tool-layer)
+11. [Agent design](#11-agent-design)
+12. [Data & demo strategy](#12-data--demo-strategy)
+13. [Execution plan (12-day)](#13-execution-plan-12-day)
+14. [Risks and mitigations](#14-risks-and-mitigations)
+15. [Pitch narrative](#15-pitch-narrative-5-min)
+16. [Open questions](#16-open-questions)
 
 ---
 
@@ -59,6 +59,8 @@ Thousands of bots compete for these opportunities. The game is won and lost in *
 **The forensic question that matters:** "I saw a $500 opportunity. I got $200. Where did the other $300 go — and could I have captured it?"
 
 That's what this tool answers.
+
+> **Note on Base vs Ethereum mainnet:** Base uses a centralized sequencer (Coinbase) with FCFS ordering. Traditional mempool-based frontrunning (bot observes your pending tx and outbids on gas) does not exist on Base. What *does* happen: two bots independently detect the same opportunity and both land in the same block, with one at a lower index by sequencer timing. The effect on your realized PnL is identical — pool state is consumed before you — but the mechanism is sequencer-ordering preemption, not adversarial gas-war frontrunning. The demo uses Ethereum mainnet where the classic frontrun story is accurate and familiar to judges.
 
 ---
 
@@ -103,15 +105,15 @@ We put a disciplined, evidence-citing agent on top of the existing data layer.
 ## 6. MVP scope
 
 ### In scope (hackathon)
-- Single chain: **Base**
+- Single chain: **Ethereum mainnet**
 - DEX coverage: **Uniswap v2 + v3** only
 - Read-only analysis of historical trades
 - **2 curated demo trades** from real MEV wallets
 - Multi-turn conversational interface
-- Web dashboard (frontend engineer owns it)
+- Web dashboard (Next.js)
 - **5 investigation tools** backed by Tenderly + RPC
 - **2 investigation paths** from the failure taxonomy (see section 7)
-- Streaming tool-call timeline in the UI
+- Streaming tool-call timeline in the UI (SSE)
 
 ### Out of scope (hackathon)
 - Live trade execution, wallet/key handling
@@ -197,10 +199,10 @@ Path 2: A2 → B9  (unknown)
                           │ HTTP / SSE
                           ▼
            ┌─────────────────────────────┐
-           │    Axum API Server          │
-           │  - /trades                  │
-           │  - /investigate (streaming) │
-           │  - /reports                 │
+           │    Hono API Server          │
+           │  - GET  /trades             │
+           │  - POST /investigate (SSE)  │
+           │  - GET  /reports/:id        │
            └──────────────┬──────────────┘
                           │
                           ▼
@@ -214,56 +216,71 @@ Path 2: A2 → B9  (unknown)
               │                       │
               ▼                       ▼
    ┌──────────────────┐   ┌──────────────────────┐
-   │  tenderly_client │   │     rpc_client       │
-   │  - simulate      │   │  - get_block         │
-   │  - trace         │   │  - get_tx_receipt    │
-   │  - state override│   │  - get_logs          │
+   │  tenderlyClient  │   │      rpcClient       │
+   │  - simulate      │   │  - getBlock          │
+   │  - trace         │   │  - getTransactionR.. │
+   │  - stateOverride │   │  - getLogs           │
    └──────────────────┘   └──────────────────────┘
               │                       │
               ▼                       ▼
-       Tenderly API            Base RPC (Alchemy)
+       Tenderly API         Ethereum RPC (Alchemy)
                           │
                           ▼
            ┌─────────────────────────────┐
-           │      QuestDB (reuse)        │
-           │  - trade_reports            │
-           │  - investigation_logs       │
+           │      reports/ (JSON)        │
+           │  - {tx_hash}.json           │
+           │  - investigation_log.ndjson │
            └─────────────────────────────┘
 ```
 
-**Crates:**
+**Packages (monorepo):**
 
-- `shared_types` — `TradeRef`, `TradeReport`, `FailureCategory`, `Evidence`, `ToolCall` records
-- `tenderly_client` — REST wrapper. Simulation, traces, state overrides.
-- `rpc_client` — thin wrapper around `alloy` for block/tx/receipt/logs calls
-- `pool_math` — Uniswap v2/v3 math for expected-PnL calculation. Use existing crate (`uniswap_v3_math`), don't roll your own
-- `observability_agent` — the Claude loop, tool definitions, system prompt, tool-call budget enforcement, citation verification
-- `db_quest` — reuse from polymarket-bot
-- `api` — axum server, SSE streaming for live tool-call timelines
+- `packages/shared` — shared TypeScript types: `TradeRef`, `TradeReport`, `FailureCategory`, `Evidence`, `ToolCall`
+- `packages/tenderly-client` — typed fetch wrapper for Tenderly REST API: simulation, traces, state overrides
+- `packages/rpc-client` — thin wrapper around `viem` for block/tx/receipt/log calls and ABI decoding
+- `packages/pool-math` — Uniswap v2/v3 expected-PnL calculation using `@uniswap/v3-sdk`. Do **not** roll your own tick math.
+- `packages/agent` — the Claude tool-use loop, tool definitions, system prompt, tool-call budget enforcement, citation verification
+- `apps/api` — Hono server, SSE streaming for live tool-call timelines
+- `apps/web` — Next.js frontend
 
 ---
 
 ## 9. Tech stack
 
 **Backend:**
-- **Rust** — workspace layout mirroring polymarket-bot
-- **alloy** — Ethereum RPC client library
-- **Tenderly REST API** — simulations, traces, state overrides
-- **Alchemy** — Base RPC node
-- **axum** — HTTP + SSE for streaming agent responses
-- **tokio** — async runtime
-- **Claude API** (`claude-sonnet-4-6`) — the reasoning layer; tool use is native
-- **QuestDB** — reuse existing setup for report storage
-- **tracing** — reuse `logging` crate from polymarket-bot
+- **TypeScript + Node.js** — monorepo via `pnpm workspaces`
+- **viem** — Ethereum RPC client: block fetching, log decoding, ABI parsing, pool state reads
+- **Tenderly REST API** — simulations, traces, state overrides (plain `fetch`, no official SDK needed)
+- **Alchemy** — Ethereum mainnet RPC node
+- **Hono** — lightweight HTTP server + native SSE streaming
+- **@anthropic-ai/sdk** — Claude API with native tool-use support; typed `tool_use` / `tool_result` blocks out of the box
+- **@uniswap/v3-sdk + @uniswap/sdk-core** — tick math, pool state calculations, expected PnL
+- **JSON files on disk** — report storage during hackathon; no database overhead
 
 **Frontend:**
 - **Next.js + TailwindCSS**
-- **Server-Sent Events** — live tool-call streaming
+- **Server-Sent Events** — live tool-call streaming from Hono → Next.js
 - Components: trade list + chat + evidence panel + tool-call timeline
 
 **External:**
 - **EigenPhi** — source real MEV wallet addresses for the demo dataset
-- **Tenderly** — sponsor; lean into it visibly in the demo
+- **Tenderly** — sponsor; lean into it visibly in the demo UI
+
+**Monorepo layout:**
+```
+mev-forensics/
+├── apps/
+│   ├── api/          # Hono server
+│   └── web/          # Next.js dashboard
+├── packages/
+│   ├── shared/       # types shared across api + web
+│   ├── agent/        # Claude tool-use loop
+│   ├── tenderly-client/
+│   ├── rpc-client/
+│   └── pool-math/
+├── pnpm-workspace.yaml
+└── turbo.json        # optional, speeds up builds
+```
 
 ---
 
@@ -273,21 +290,83 @@ Path 2: A2 → B9  (unknown)
 
 | Tool | Signature (sketch) | Backed by | Serves |
 |---|---|---|---|
-| `get_trade` | `(tx_hash) → {from, to, block, index, value, gas, status, calldata, logs, realized_pnl}` | RPC + decoder | Both paths |
+| `get_trade` | `(tx_hash) → {from, to, block, index, value, gas, status, calldata, logs, realized_pnl}` | viem RPC + ABI decoder | Both paths |
 | `simulate_at_state` | `(tx_hash, block, state_override?) → {simulated_pnl, success, revert_reason}` | Tenderly | Both paths — **most important tool** |
-| `get_block_txs` | `(block_number) → [{index, tx_hash, from, to, touched_pools}]` | RPC | B1, B9 |
+| `get_block_txs` | `(block_number) → [{index, tx_hash, from, to, touched_pools}]` | viem getLogs (Swap event filter) | B1, B9 |
 | `get_tx_trace` | `(tx_hash) → call_tree` | Tenderly | B1 confirmation |
-| `get_pool_state` | `(pool_address, block) → {reserves \| ticks, sqrt_price, liquidity}` | RPC + pool_math | B9 (ruling out stale quote) |
+| `get_pool_state` | `(pool_address, block) → {reserves \| ticks, sqrt_price, liquidity}` | viem + @uniswap/v3-sdk | B9 (ruling out stale quote) |
 
 **Dropped for MVP:** `get_gas_distribution`, `get_address_history`
 
 **Tool budget:** max 8 tool calls per investigation turn. If the agent hasn't resolved the case by then, it must report `unknown` with what it tried.
 
-**Rate limits:** Cache every Tenderly simulation result keyed by `(tx_hash, block, state_override_hash)`. Pre-warm all demo trades before the live demo.
+**Rate limits:** Cache every Tenderly simulation result in memory keyed by `${tx_hash}:${block}:${stateOverrideHash}`. Pre-warm all demo trades before the live demo.
+
+**Key implementation note for `get_block_txs`:** `touched_pools` requires filtering Swap event logs for the block using viem's `getLogs` with Uniswap V2/V3 Swap topic hashes — not just address matching. Budget this; it's a half-day with viem but the ABI decoding is clean.
 
 ---
 
 ## 11. Agent design
+
+### Claude tool-use loop (TypeScript)
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic();
+
+async function runInvestigation(txHash: string): Promise<TradeReport> {
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: `Investigate this trade: ${txHash}` }
+  ];
+
+  let toolCallCount = 0;
+
+  while (true) {
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      tools: TOOL_DEFINITIONS,
+      messages,
+    });
+
+    // Stream tool-call events to frontend via SSE here
+
+    if (response.stop_reason === "end_turn") {
+      return parseReport(response);
+    }
+
+    if (response.stop_reason === "tool_use") {
+      const toolUseBlocks = response.content.filter(
+        (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
+      );
+
+      toolCallCount += toolUseBlocks.length;
+      if (toolCallCount >= 8) {
+        // Force unknown report — inject budget-exceeded message
+        messages.push({ role: "assistant", content: response.content });
+        messages.push({
+          role: "user",
+          content: "Tool budget exhausted. Report A2 → B9 with what you tried.",
+        });
+        continue;
+      }
+
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (block) => ({
+          type: "tool_result" as const,
+          tool_use_id: block.id,
+          content: JSON.stringify(await dispatchTool(block.name, block.input)),
+        }))
+      );
+
+      messages.push({ role: "assistant", content: response.content });
+      messages.push({ role: "user", content: toolResults });
+    }
+  }
+}
+```
 
 ### System prompt (outline)
 ```
@@ -302,8 +381,8 @@ MVP taxonomy:
 Investigation protocol:
 1. Call get_trade to load the tx.
 2. Call simulate_at_state at block N-1 to establish expected PnL.
-3. Compare expected vs realized. If within 5%: report A2 with no clear
-   root cause and stop.
+3. Compare expected vs realized. If within 5%: report A2 → B9 (no clear
+   root cause) and stop.
 4. Call get_block_txs to find all txs in the same block touching the
    same pool, at a lower index than the target tx.
 5. If a candidate is found: call get_tx_trace on it to confirm it
@@ -324,22 +403,22 @@ Evidence rules (NON-NEGOTIABLE):
 - **Max tool calls per turn:** 8 (hard stop)
 - **Citation verification:** post-process the output and strip or flag any uncited claims
 - **Multi-turn:** conversation history is preserved; follow-ups reason over cached results
-- **Streaming:** tool calls stream via SSE to the frontend in real time
+- **Streaming:** tool call events stream via SSE to the Next.js frontend in real time
 
 ### Response schema
-```rust
-struct TradeReport {
-    tx_hash: String,
-    outcome: OutcomeCategory,      // A2 or A9
-    root_cause: Option<RootCause>, // B1 or B9
-    expected_pnl: Option<Decimal>,
-    realized_pnl: Decimal,
-    pnl_delta: Option<Decimal>,
-    confidence: f32,               // 0.0..1.0
-    evidence: Vec<Evidence>,       // structured citations
-    counterfactuals: Vec<Counterfactual>,
-    narrative: String,             // the LLM's explanation
-    tool_calls: Vec<ToolCall>,     // audit trail
+```typescript
+interface TradeReport {
+  tx_hash: string;
+  outcome: "A2" | "A9";
+  root_cause: "B1" | "B9" | null;
+  expected_pnl: number | null;      // USD
+  realized_pnl: number;             // USD
+  pnl_delta: number | null;         // USD
+  confidence: number;               // 0.0–1.0
+  evidence: Evidence[];             // structured citations
+  counterfactuals: Counterfactual[];
+  narrative: string;                // the agent's explanation
+  tool_calls: ToolCall[];           // full audit trail
 }
 ```
 
@@ -350,7 +429,7 @@ struct TradeReport {
 ### Dataset
 - **2 real MEV wallets** sourced from EigenPhi leaderboards
 - Hand-curate **2 demo trades** — one per path. Verify both by hand before the hackathon starts.
-- Pre-warm Tenderly cache for both trades. The live demo must never hit a cold API call.
+- Pre-warm Tenderly simulation cache for both trades. The live demo must never hit a cold API call.
 
 ### Demo set
 
@@ -370,17 +449,23 @@ struct TradeReport {
 
 ---
 
-## 13. Execution plan (5-day async)
+## 13. Execution plan (12-day)
 
 | Day | Focus | Done when |
 |---|---|---|
-| **1** | `get_trade` + `simulate_at_state` working end-to-end on one real Base tx. Verify simulated PnL against Etherscan manually. | You can print expected vs realized PnL for one real trade. |
-| **2** | `get_block_txs` + `get_tx_trace` + agent loop running the B1 path (Path 1) end-to-end. Curate both demo trades. | Agent correctly identifies the frontrunning tx on demo trade #1. |
-| **3** | B9 path (Path 2) + `get_pool_state` + citation verification layer. Pre-warm Tenderly cache. Record backup video. | Both paths working. Backup video recorded. |
-| **4** | Frontend integration + SSE streaming tool-call timeline + evidence panel. Polish chat UX. | Real data flowing into UI. Demo runnable end-to-end in browser. |
-| **5** | Demo rehearsal (10+ runs). Pitch deck. README. Submission polish. **No new features.** | Submitted. |
+| **1** | Monorepo scaffolding (`pnpm workspaces`, shared types, Hono server shell, Next.js shell). `rpc-client` wired to Alchemy. `get_trade` tool returning real data for one tx. | You can print a real tx's block, index, and logs to stdout. |
+| **2** | `simulate_at_state` via Tenderly API. Validate simulated PnL against Etherscan realized PnL for a *winning* trade (clean case first). Pin block number semantics — confirm Tenderly `block_number: N` gives post-N state. | Simulated PnL matches realized within 2% on a clean trade. |
+| **3** | `get_block_txs` with viem `getLogs` Swap topic filtering. `touched_pools` extraction from decoded logs. Curate both demo trades. | You can list all Uniswap txs in a block with their touched pools. |
+| **4** | Claude tool-use loop end-to-end (Path 1: A2 → B1). Agent correctly identifies the frontrunning tx on demo trade #1. | Agent produces a cited B1 report on demo trade #1. |
+| **5** | `get_pool_state` + Path 2 (A2 → B9). Citation verification post-processor. Pre-warm Tenderly cache for both demo trades. Record backup video. | Both paths working. Backup video recorded. |
+| **6** | SSE streaming from Hono → Next.js. Tool-call timeline component in the UI. Real data flowing into the dashboard. | Live tool-call stream visible in browser during investigation. |
+| **7** | Evidence panel UI. Chat interface polish. Shared types between `packages/shared` → `apps/web`. | End-to-end demo runnable in browser with real data. |
+| **8** | Buffer day — fix whatever broke. If ahead: add Tenderly branding to tool-call timeline (sponsor visibility). | Demo runs 5 times in a row without failure. |
+| **9** | Demo rehearsal. Pitch deck. README final pass. | 10 clean runs. Pitch deck done. |
+| **10** | Submission polish. No new features. | Submitted. |
+| **11–12** | Reserve / overflow. Do not plan features here. | — |
 
-**The rule for days 1–3:** don't touch the frontend. Don't add new tools. Don't read about B3. The only question is: do both paths work reliably on your two curated trades?
+**The rule for days 1–5:** don't touch the frontend beyond scaffolding. Don't add new tools. Don't read about B3. The only question is: do both paths work reliably on your two curated trades?
 
 ---
 
@@ -388,11 +473,12 @@ struct TradeReport {
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Tenderly API flaky during demo | Medium | High | Cache everything + recorded backup video |
-| Uniswap v3 tick math eats a day | Medium | High | Use `uniswap_v3_math` crate; verify day 1 |
-| Agent loops / over-investigates | Medium | High | Hard 8-call budget, strict system prompt |
-| Agent hallucinates uncited claims | Medium | High | Post-process citation check; strip uncited lines |
-| `simulate_at_state` doesn't match Etherscan | Medium | High | Verify both demo trades manually on day 1; if broken, fix before building anything else |
+| Tenderly API flaky during demo | Medium | High | Cache everything in memory + pre-warm + recorded backup video |
+| `simulate_at_state` off-by-one on block state | Medium | High | Validate on day 2 against a known clean trade before building anything else |
+| V3 tick math wrong (expected PnL) | Medium | High | Use `@uniswap/v3-sdk` exclusively — don't roll your own. Validate on day 2. |
+| Agent loops / over-investigates | Medium | High | Hard 8-call budget enforced in the loop, not the prompt |
+| Agent hallucinates uncited claims | Medium | High | Post-process citation check; strip uncited lines before sending to UI |
+| `get_block_txs` slow on dense blocks | Medium | Medium | Filter logs by Swap topic first; don't fetch full tx bodies for every tx in block |
 | Judges don't know MEV | Low-Med | Medium | Open pitch with pain, not tech; show the 20-min manual workflow |
 | Scope creep | High | Medium | 2 paths, 5 tools. Refer to this list daily. |
 
@@ -449,6 +535,7 @@ Everything below is real and valuable — deliberately cut from the hackathon MV
 - Live stream of all new trades from watched wallets
 - Alerts on pattern shifts across sessions
 - Aggregate cross-trade dashboards
-- Multi-chain support (mainnet, Arbitrum, Optimism)
+- Multi-chain support (mainnet, Arbitrum, Optimism, Base)
 - Curve, Balancer, other AMM support beyond Uni v2/v3
 - Gas counterfactual: "if you'd bid +3 gwei, you'd have landed at index 4"
+- Database upgrade: replace JSON files with QuestDB for aggregate analytics
