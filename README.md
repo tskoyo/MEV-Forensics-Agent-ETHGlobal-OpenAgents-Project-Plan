@@ -1,6 +1,6 @@
 # MEV Forensics Agent — ETHGlobal OpenAgents Project Plan
 
-*Version 3.0 · MVP scope · Updated 2026-04-23*
+*Version 3.1 · MVP scope · Updated 2026-04-23*
 
 
 ## Table of contents
@@ -164,23 +164,105 @@ The agent reasons over a bounded taxonomy. Every trade gets classified into one 
 ### Why `unknown` (B9) matters
 Every other agent at the hackathon will be overconfident. Yours admitting uncertainty — with receipts showing what it ruled out — is a memorable trust signal. Build one `unknown` demo case and close the pitch with it.
 
-### The 2 demo paths
+### The 2 MVP investigation flows
+
+Both flows share the same opening steps. The agent always starts by loading the trade and simulating expected PnL — the first decision gate determines how far it goes.
+
+---
+
+#### Flow 1 — `A2 → B1` (frontrun confirmed)
 
 ```
-Path 1: A2 → B1  (frontrun_same_block)
-  "Why did I earn $50 when I expected $75?"
-  → simulate at N-1 → reconstruct expected PnL
-  → scan block txs → find competitor at lower index
-  → trace competitor → confirm same pool touched
-  → "This tx took your $25."
+1. get_trade(tx_hash)
+   → load tx, logs, realized PnL
 
-Path 2: A2 → B9  (unknown)
-  "Why did this trade underperform?"
-  → simulate at N-1 → reconstruct expected PnL
-  → scan block txs → no competitor found on same pool
-  → check pool state delta → within normal variance
-  → "I investigated and cannot confidently classify this. Here's what I ruled out."
+2. simulate_at_state(tx_hash, block N-1)
+   → compute expected PnL at pre-block state
+
+3. PnL gap > 5%?
+   → NO  → early exit: report A2 → B9 "normal variance, nothing to investigate" (see Flow 2a)
+   → YES → continue
+
+4. get_block_txs(block_number)
+   → find all txs in the same block that touched the same pool
+   → filter to txs at a lower block index than the target tx
+
+5. Competitor found at lower index?
+   → NO  → continue to Flow 2b
+   → YES → continue
+
+6. get_tx_trace(competitor_tx_hash)
+   → confirm competitor touched the same pool
+
+7. RESULT: A2 → B1
+   "Tx at index N touched pool X before you and consumed the liquidity.
+    Expected: $75. Realized: $50. Delta: -$25."
 ```
+
+**What the agent says:** *"This tx at index 14 got there first and took your $25."*
+
+---
+
+#### Flow 2 — `A2 → B9` (unknown — two variants)
+
+**Variant 2a — Early exit (gap within normal variance)**
+
+```
+1. get_trade(tx_hash)
+2. simulate_at_state(tx_hash, block N-1)
+
+3. PnL gap > 5%?
+   → NO → early exit
+
+4. RESULT: A2 → B9
+   "Realized PnL is within 5% of expected. No meaningful underperformance
+    to investigate. This is normal variance."
+```
+
+No further tool calls. Short-circuit and stop.
+
+---
+
+**Variant 2b — Full investigation, no cause found**
+
+```
+1. get_trade(tx_hash)
+2. simulate_at_state(tx_hash, block N-1)
+
+3. PnL gap > 5%?  → YES → continue
+
+4. get_block_txs(block_number)
+   → scan for same-pool txs at lower index
+
+5. Competitor found?  → NO → continue
+
+6. get_pool_state(pool_address, block N-1)
+   get_pool_state(pool_address, block N)
+   → compare price/reserves between N-1 and N
+   → was there significant organic market movement?
+
+7. RESULT: A2 → B9
+   Two possible narratives depending on pool state delta:
+   - Large delta: "No frontrunner found, but the pool price moved X%
+     between block N-1 and N from unrelated trades. Your quote was stale."
+   - Small delta: "I investigated and cannot confidently classify this.
+     Here is what I ruled out: [B1 checked and not found, pool state
+     within normal variance]."
+```
+
+**Why `get_pool_state` matters here:** without it, the agent can only say "no competitor found." With it, the agent can distinguish between *stale quote* (market moved organically) and *genuinely unknown*. Both still stamp `B9` in the MVP — `B4 stale_quote` is a future root cause code — but the narrative in the report is meaningfully different, and that detail is what searchers actually care about.
+
+---
+
+#### Summary
+
+| Flow | Gate 1 (gap > 5%?) | Gate 2 (competitor?) | Result | Narrative |
+|---|---|---|---|---|
+| 1 | YES | YES | `A2 → B1` | "This tx frontran you" |
+| 2a | NO | — | `A2 → B9` | "Normal variance, not worth investigating" |
+| 2b | YES | NO | `A2 → B9` | "Investigated, nothing found — here's what I ruled out" |
+
+**The two `B9` exits are not the same answer.** Variant 2a is a short-circuit with no further investigation. Variant 2b is a full audit trail that earns the agent's credibility — the searcher sees every tool call that ran and every hypothesis that was ruled out. That distinction is the core trust signal of this tool.
 
 ---
 
@@ -442,7 +524,7 @@ interface TradeReport {
 3. Watch tool-call timeline stream live: `get_trade → simulate_at_state(N-1) → get_block_txs → get_tx_trace(competitor)`
 4. Agent produces cited report in ~20 seconds: *"This tx at index 14 touched the same pool before you and consumed the liquidity."*
 5. User asks follow-up: *"Who was that?"* Agent reasons from existing context — no re-fetch.
-6. Switch to trade #2. Agent works through the same steps, rules out B1, reports B9. *"I investigated and cannot confidently classify this. Here's what I ruled out."*
+6. Switch to trade #2. Agent works through the same steps, runs `get_block_txs` (no competitor), then `get_pool_state` to check for organic price movement, reports B9. *"I investigated and cannot confidently classify this. Here's what I ruled out."*
 7. **That's the close.** The unknown case is your most memorable moment.
 
 ---
