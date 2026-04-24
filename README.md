@@ -379,6 +379,65 @@ mev-forensics/
 
 ## 11. Agent design
 
+### Agent workflow — what happens when a user pastes a tx hash
+
+This is the exact sequence the agent runs from the moment a user submits a transaction hash to the moment a report is returned.
+
+**Step 1 — User submits tx hash**
+The frontend sends `{ tx_hash, question }` to `POST /investigate`. The SSE stream opens. The agent begins.
+
+**Step 2 — `get_trade`**
+Fetches the raw transaction: block number, block index, decoded logs, realized PnL. This is the ground truth — what actually happened on-chain.
+
+**Step 3 — `simulate_at_state` at block N-1**
+Replays the same tx against pool state right before the block, as if no other tx had touched the pool yet. Returns the simulated PnL — what the bot *should* have earned. This is the expected PnL baseline.
+
+**Step 4 — Compare gap**
+- Gap ≤ 5% → **stop**. Report "normal variance, nothing to investigate." Done in 2 tool calls.
+- Gap > 5% → something went wrong. Continue investigation.
+
+**Step 5 — `get_block_txs`**
+Scans every transaction in the same block for ones that touched the same pool at a *lower index* than the target tx. These are the suspects.
+
+**Step 6 — Competitor found?**
+- **Yes** → call `get_tx_trace` on the competitor to confirm it touched the same pool. If confirmed: report "frontrunner found — this tx consumed your liquidity." Done.
+- **No** → continue.
+
+**Step 7 — `get_pool_state` at N-1 and N**
+Measures how much the pool price moved between the two blocks organically. Two possible outcomes:
+- Large delta, no single competitor → the bot's quote was stale (market moved before the tx landed). Report "no frontrunner, likely stale quote."
+- Small delta, no competitor → agent has exhausted all checks. Report "investigated everything, no confident explanation — here's what I ruled out."
+
+**Step 8 — Agent writes the report**
+Every claim cites a specific tool result. The narrative populates the chat bubble. The structured data (`verdict`, `pnl breakdown`, `citations`) populates the evidence panel in the UI.
+
+**Step 9 — Follow-up questions**
+User can ask follow-ups (e.g. "who ran that tx?"). The agent reasons from already-fetched results — no new tool calls unless strictly necessary. Hard cap of 8 tool calls per turn enforced in the loop code.
+
+**Summary diagram:**
+
+```
+user pastes tx hash
+        │
+  get_trade → simulate_at_state
+        │
+     gap > 5%? ── no ──▶ "normal variance" ✓  (2 tool calls)
+        │
+       yes
+        │
+  get_block_txs
+        │
+  competitor? ── no ──▶ get_pool_state ──▶ "stale quote / unknown" ✓  (5 tool calls)
+        │
+       yes
+        │
+  get_tx_trace ──▶ "frontrunner confirmed" ✓  (4 tool calls)
+```
+
+Total tool calls: **2** (fast exit) · **4** (frontrun confirmed) · **5** (full investigation). Hard cap: **8**.
+
+---
+
 ### Claude tool-use loop (TypeScript)
 
 ```typescript
